@@ -1,5 +1,3 @@
--- game.lua - Core game logic and state management
-
 Game = {}
 
 function Game.init()
@@ -88,6 +86,11 @@ function Game.decodeCurrentMessage()
         Game.messages[Game.state.currentMessage].decoded = true
         Game.state.lockedOn = false
         Game.state.messageRevealed = false
+        
+        -- Trigger glitch effect on decode
+        if Effects then
+            Effects.triggerGlitch(0.2)
+        end
         
         -- Check if all messages decoded
         if Game.allMessagesDecoded() then
