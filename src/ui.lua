@@ -139,15 +139,22 @@ function UI.drawRadioPanel()
     -- Panel background
     love.graphics.setColor(Config.colors.panel)
     love.graphics.rectangle("fill", 50, Config.ui.panelY, 700, Config.ui.panelHeight)
-    
-    -- Frequency display
+
+    -- Get current band for theming
+    local currentBand = Game.getCurrentBand()
+
+    -- Frequency display (use current band color)
     love.graphics.setFont(UI.fonts.title)
-    love.graphics.setColor(Config.colors.yellow)
+    if currentBand then
+        love.graphics.setColor(currentBand.color)
+    else
+        love.graphics.setColor(Config.colors.yellow)
+    end
     love.graphics.printf(
         string.format("%.1f MHz", Game.state.currentFrequency),
         50, 100, 700, "center"
     )
-    
+
     UI.drawFrequencyBar()
     UI.drawSignalMeter()
     UI.drawWaveform()
@@ -158,26 +165,58 @@ function UI.drawFrequencyBar()
     local barY = 150
     local barWidth = 600
     local barHeight = 30
-    
-    -- Bar background
-    love.graphics.setColor(Config.colors.greenDim)
-    love.graphics.rectangle("fill", barX, barY, barWidth, barHeight)
-    
-    -- Current frequency indicator
-    local freqPercent = (Game.state.currentFrequency - Config.frequency.min) / 
-                        (Config.frequency.max - Config.frequency.min)
+
+    -- Draw band sections
+    local totalRange = Config.frequency.max - Config.frequency.min
+
+    for i, band in ipairs(Game.bands) do
+        local bandStart = band.minFreq
+        local bandEnd = band.maxFreq
+        local startPercent = (bandStart - Config.frequency.min) / totalRange
+        local endPercent = (bandEnd - Config.frequency.min) / totalRange
+
+        local sectionX = barX + (barWidth * startPercent)
+        local sectionWidth = barWidth * (endPercent - startPercent)
+
+        -- Current band - brighter, others - dimmer
+        local isCurrent = (i == Game.currentBandIndex)
+
+        if band.unlocked then
+            if isCurrent then
+                -- Current band - bright colored background
+                love.graphics.setColor(band.color[1], band.color[2], band.color[3], 0.4)
+            else
+                -- Other unlocked bands - dim colored background
+                love.graphics.setColor(band.colorDim[1], band.colorDim[2], band.colorDim[3], 0.3)
+            end
+        else
+            -- Locked bands - very dim
+            love.graphics.setColor(0.15, 0.15, 0.15, 0.5)
+        end
+
+        love.graphics.rectangle("fill", sectionX, barY, sectionWidth, barHeight)
+
+        -- Draw band boundaries
+        love.graphics.setColor(0.1, 0.1, 0.1, 0.8)
+        love.graphics.setLineWidth(1)
+        love.graphics.line(sectionX, barY, sectionX, barY + barHeight)
+    end
+
+    -- Current frequency indicator (bright and visible)
+    local freqPercent = (Game.state.currentFrequency - Config.frequency.min) / totalRange
     local indicatorX = barX + (barWidth * freqPercent)
-    
-    love.graphics.setColor(Config.colors.green)
-    love.graphics.rectangle("fill", indicatorX - 2, barY, 4, barHeight)
-    
+
+    love.graphics.setColor(Config.colors.white)
+    love.graphics.setLineWidth(3)
+    love.graphics.line(indicatorX, barY - 5, indicatorX, barY + barHeight + 5)
+    love.graphics.setLineWidth(1)
+
     -- Signal markers (only show when messages exist and player is locked onto that message)
     if Game.messages then
         for i, msg in ipairs(Game.messages) do
             if not msg.decoded then
                 if Game.state.lockedOn and Game.state.currentMessage == i then
-                    local signalPercent = (msg.frequency - Config.frequency.min) / 
-                                          (Config.frequency.max - Config.frequency.min)
+                    local signalPercent = (msg.frequency - Config.frequency.min) / totalRange
                     local signalX = barX + (barWidth * signalPercent)
                     love.graphics.setColor(Config.colors.red)
                     love.graphics.circle("fill", signalX, barY + barHeight / 2, 5)
@@ -185,33 +224,62 @@ function UI.drawFrequencyBar()
             end
         end
     end
+
+    -- Bar border
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.rectangle("line", barX, barY, barWidth, barHeight)
 end
 
 function UI.drawSignalMeter()
     love.graphics.setFont(UI.fonts.small)
     love.graphics.setColor(Config.colors.white)
     love.graphics.print("SIGNAL STRENGTH", 100, 200)
-    
+
     local meterWidth = 200
-    love.graphics.setColor(Config.colors.greenDim)
+    local currentBand = Game.getCurrentBand()
+
+    -- Meter background (use current band's dim color)
+    if currentBand then
+        love.graphics.setColor(currentBand.colorDim)
+    else
+        love.graphics.setColor(Config.colors.greenDim)
+    end
     love.graphics.rectangle("fill", 100, 220, meterWidth, 20)
-    
-    -- Signal strength fill
-    local signalColor = Game.state.signalStrength > 0.9 and Config.colors.green or 
-                        Game.state.signalStrength > 0.5 and Config.colors.yellow or 
-                        Config.colors.red
-    love.graphics.setColor(signalColor)
+
+    -- Signal strength fill (use current band's color when locked)
+    if Game.state.signalStrength > 0.9 then
+        if currentBand then
+            love.graphics.setColor(currentBand.color)
+        else
+            love.graphics.setColor(Config.colors.green)
+        end
+    elseif Game.state.signalStrength > 0.5 then
+        love.graphics.setColor(Config.colors.yellow)
+    else
+        love.graphics.setColor(Config.colors.red)
+    end
     love.graphics.rectangle("fill", 100, 220, meterWidth * Game.state.signalStrength, 20)
-    
-    -- Lock indicator
+
+    -- Lock indicator (use current band's color)
     if Game.state.lockedOn then
-        love.graphics.setColor(Config.colors.green)
+        if currentBand then
+            love.graphics.setColor(currentBand.color)
+        else
+            love.graphics.setColor(Config.colors.green)
+        end
         love.graphics.print("LOCKED", 320, 220)
     end
 end
 
 function UI.drawWaveform()
-    love.graphics.setColor(Config.colors.green)
+    -- Use current band's color for waveform
+    local currentBand = Game.getCurrentBand()
+    if currentBand then
+        love.graphics.setColor(currentBand.color)
+    else
+        love.graphics.setColor(Config.colors.green)
+    end
+
     for i = 1, #UI.waveformPoints - 1 do
         local x1 = 400 + i * 3
         local y1 = 220 + UI.waveformPoints[i]
