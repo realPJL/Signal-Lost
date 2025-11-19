@@ -40,6 +40,7 @@ function UI.draw()
         UI.drawStartScreen()
     else
         UI.drawTitle()
+        UI.drawBandSelector()
         UI.drawRadioPanel()
         UI.drawMessagePanel()
         UI.drawStatusBar()
@@ -63,6 +64,75 @@ function UI.drawTitle()
     love.graphics.setFont(UI.fonts.title)
     love.graphics.setColor(Config.colors.green)
     love.graphics.printf("SIGNAL LOST", 0, 20, 800, "center")
+end
+
+function UI.drawBandSelector()
+    local selectorY = 52
+    local selectorHeight = 24
+    local bandWidth = 140
+    local spacing = 10
+    local startX = (800 - (bandWidth * 5 + spacing * 4)) / 2
+
+    -- Draw each band
+    for i, band in ipairs(Game.bands) do
+        local x = startX + (i - 1) * (bandWidth + spacing)
+        local isCurrent = (i == Game.currentBandIndex)
+
+        -- Background
+        if band.unlocked then
+            if isCurrent then
+                -- Current band - bright colored background
+                love.graphics.setColor(band.color[1], band.color[2], band.color[3], 0.3)
+                love.graphics.rectangle("fill", x, selectorY, bandWidth, selectorHeight)
+            else
+                -- Unlocked but not current - dim background
+                love.graphics.setColor(band.colorDim[1], band.colorDim[2], band.colorDim[3], 0.2)
+                love.graphics.rectangle("fill", x, selectorY, bandWidth, selectorHeight)
+            end
+        else
+            -- Locked band - very dim
+            love.graphics.setColor(0.1, 0.1, 0.1, 0.3)
+            love.graphics.rectangle("fill", x, selectorY, bandWidth, selectorHeight)
+        end
+
+        -- Border
+        if isCurrent then
+            -- Current band - thick bright border
+            love.graphics.setLineWidth(2)
+            love.graphics.setColor(band.color)
+            love.graphics.rectangle("line", x, selectorY, bandWidth, selectorHeight)
+            love.graphics.setLineWidth(1)
+        else
+            -- Other bands - thin border
+            if band.unlocked then
+                love.graphics.setColor(band.colorDim)
+            else
+                love.graphics.setColor(0.2, 0.2, 0.2)
+            end
+            love.graphics.rectangle("line", x, selectorY, bandWidth, selectorHeight)
+        end
+
+        -- Band name and number
+        love.graphics.setFont(UI.fonts.small)
+        if band.unlocked then
+            if isCurrent then
+                love.graphics.setColor(band.color)
+            else
+                love.graphics.setColor(band.colorDim)
+            end
+            love.graphics.printf(i .. ". " .. band.name, x, selectorY + 6, bandWidth, "center")
+        else
+            -- Locked indicator
+            love.graphics.setColor(0.3, 0.3, 0.3)
+            love.graphics.printf(i .. ". LOCKED", x, selectorY + 6, bandWidth, "center")
+        end
+    end
+
+    -- Navigation hints
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.print("Q", startX - 20, selectorY + 6)
+    love.graphics.print("E", startX + (bandWidth * 5 + spacing * 4) + 10, selectorY + 6)
 end
 
 function UI.drawRadioPanel()
@@ -217,10 +287,32 @@ end
 
 function UI.drawStatusBar()
     love.graphics.setFont(UI.fonts.small)
+
+    -- Get current band info
+    local band = Game.getCurrentBand()
+    if band then
+        -- Show current band name and progress
+        love.graphics.setColor(band.color)
+        local bandProgress = string.format("%s: %d/%d", band.name, Game.getDecodedCount(), #Game.messages)
+        love.graphics.print(bandProgress, 20, 570)
+    end
+
+    -- Show total progress across all bands
+    local totalDecoded = 0
+    local totalMessages = 0
+    for _, b in ipairs(Game.bands) do
+        for _, msg in ipairs(b.messages) do
+            totalMessages = totalMessages + 1
+            if msg.decoded then
+                totalDecoded = totalDecoded + 1
+            end
+        end
+    end
+
     love.graphics.setColor(Config.colors.greenDim)
     love.graphics.printf(
-        string.format("Messages Decoded: %d/%d", Game.getDecodedCount(), #Game.messages),
-        0, 570, 800, "center"
+        string.format("Total: %d/%d", totalDecoded, totalMessages),
+        0, 570, 780, "right"
     )
 end
 
