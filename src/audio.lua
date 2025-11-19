@@ -1,12 +1,15 @@
 Audio = {}
 
 function Audio.init()
+    -- Master volume control (0.0 to 1.0)
+    Audio.masterVolume = 0.3
+
     -- Generate procedural static noise
     Audio.staticSource = Audio.generateStatic()
     Audio.staticSource:setLooping(true)
-    Audio.staticSource:setVolume(0.3)
+    Audio.staticSource:setVolume(0.3 * Audio.masterVolume)
     Audio.staticSource:play()
-    
+
     Audio.baseVolume = 0.3
     
     -- Proximity beep system
@@ -73,17 +76,26 @@ function Audio.init()
     Audio.morseDah = Audio.generateTone(800, 0.12)  -- Long beep
 end
 
+function Audio.setMasterVolume(volume)
+    Audio.masterVolume = math.max(0, math.min(1, volume))
+
+    -- Update static source volume
+    local signalStrength = Game.state.signalStrength
+    local staticVolume = Audio.baseVolume * (1 - signalStrength * 0.8)
+    Audio.staticSource:setVolume(staticVolume * Audio.masterVolume)
+end
+
 function Audio.update(dt)
     dt = dt or 0  -- Safety check
-    
+
     -- Adjust static volume based on signal strength
     local signalStrength = Game.state.signalStrength
     local volume = Audio.baseVolume * (1 - signalStrength * 0.8)
-    Audio.staticSource:setVolume(volume)
-    
+    Audio.staticSource:setVolume(volume * Audio.masterVolume)
+
     -- Proximity beep system
     Audio.updateProximityBeeps(dt, signalStrength)
-    
+
     -- Morse code playback
     Audio.updateMorsePlayback(dt)
 end
@@ -113,7 +125,9 @@ function Audio.updateProximityBeeps(dt, signalStrength)
 
     -- Play lock-on sound when newly locked
     if Game.state.lockedOn and Audio.lastSignalStrength < 0.9 then
-        Audio.beepLock:clone():play()
+        local source = Audio.beepLock:clone()
+        source:setVolume(Audio.masterVolume)
+        source:play()
     end
 
     Audio.lastSignalStrength = signalStrength
@@ -129,10 +143,10 @@ function Audio.playProximityBeep(strength)
     else
         beep = Audio.beepLow
     end
-    
+
     -- Clone and play (allows overlapping sounds)
     local source = beep:clone()
-    source:setVolume(0.3 + strength * 0.3)
+    source:setVolume((0.3 + strength * 0.3) * Audio.masterVolume)
     source:play()
 end
 
@@ -199,9 +213,13 @@ function Audio.updateMorsePlayback(dt)
     if Audio.morseTimer == 0 then
         -- Play sound at the start (not for spaces)
         if element.type == "dit" then
-            Audio.morseDit:clone():play()
+            local source = Audio.morseDit:clone()
+            source:setVolume(Audio.masterVolume)
+            source:play()
         elseif element.type == "dah" then
-            Audio.morseDah:clone():play()
+            local source = Audio.morseDah:clone()
+            source:setVolume(Audio.masterVolume)
+            source:play()
         end
     end
     
@@ -257,6 +275,7 @@ end
 function Audio.playDecodeSound()
     -- Special sound when decoding a message
     local decodeBeep = Audio.generateTone(1000, 0.2)
+    decodeBeep:setVolume(Audio.masterVolume)
     decodeBeep:play()
 end
 
