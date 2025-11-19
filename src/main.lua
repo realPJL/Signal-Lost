@@ -20,7 +20,7 @@ end
 
 function love.update(dt)
     Game.update(dt)
-    Audio.update()
+    Audio.update(dt)
     UI.update(dt)
     Effects.update(dt)
 end
