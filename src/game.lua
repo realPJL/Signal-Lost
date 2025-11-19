@@ -1,6 +1,8 @@
 Game = {}
 
 function Game.init()
+    Game.gameState = "start"  -- Can be "start" or "playing"
+
     Game.state = {
         currentFrequency = 90.0,
         targetFrequency = 95.5,
@@ -9,11 +11,20 @@ function Game.init()
         messageRevealed = false,
         currentMessage = 1
     }
-    
+
     Game.messages = Config.messages
 end
 
+function Game.startGame()
+    Game.gameState = "playing"
+end
+
 function Game.update(dt)
+    -- Don't update game logic if on start screen
+    if Game.gameState == "start" then
+        return
+    end
+
     -- Tuning controls
     if love.keyboard.isDown("right") or love.keyboard.isDown("d") then
         Game.state.currentFrequency = Game.state.currentFrequency + Config.frequency.tuningSpeed
@@ -21,19 +32,19 @@ function Game.update(dt)
     if love.keyboard.isDown("left") or love.keyboard.isDown("a") then
         Game.state.currentFrequency = Game.state.currentFrequency - Config.frequency.tuningSpeed
     end
-    
+
     -- Clamp frequency to FM range
     Game.state.currentFrequency = math.max(
         Config.frequency.min,
         math.min(Config.frequency.max, Game.state.currentFrequency)
     )
-    
+
     -- Find nearest undecoded signal
     Game.findNearestSignal()
-    
+
     -- Calculate signal strength
     Game.calculateSignalStrength()
-    
+
     -- Handle lock-on state
     Game.updateLockState()
 end
@@ -145,6 +156,27 @@ function Game.getDecodedCount()
 end
 
 function Game.keypressed(key)
+    -- Handle start screen
+    if Game.gameState == "start" then
+        if key == "space" or key == "return" then
+            Game.startGame()
+        elseif key == "up" or key == "w" then
+            -- Increase volume
+            if Audio then
+                Audio.setMasterVolume(Audio.masterVolume + 0.1)
+            end
+        elseif key == "down" or key == "s" then
+            -- Decrease volume
+            if Audio then
+                Audio.setMasterVolume(Audio.masterVolume - 0.1)
+            end
+        elseif key == "escape" then
+            love.event.quit()
+        end
+        return
+    end
+
+    -- Handle gameplay
     if key == "space" then
         if not Game.state.lockedOn then return end
 

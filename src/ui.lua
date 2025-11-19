@@ -34,10 +34,16 @@ end
 
 function UI.draw()
     UI.drawBackground()
-    UI.drawTitle()
-    UI.drawRadioPanel()
-    UI.drawMessagePanel()
-    UI.drawStatusBar()
+
+    -- Show start screen or gameplay
+    if Game.gameState == "start" then
+        UI.drawStartScreen()
+    else
+        UI.drawTitle()
+        UI.drawRadioPanel()
+        UI.drawMessagePanel()
+        UI.drawStatusBar()
+    end
 end
 
 function UI.drawBackground()
@@ -208,6 +214,90 @@ function UI.drawStatusBar()
         string.format("Messages Decoded: %d/%d", Game.getDecodedCount(), #Game.messages),
         0, 570, 800, "center"
     )
+end
+
+function UI.drawStartScreen()
+    -- Title
+    love.graphics.setFont(UI.fonts.title)
+    love.graphics.setColor(Config.colors.green)
+    love.graphics.printf("SIGNAL LOST", 0, 80, 800, "center")
+
+    -- Subtitle with blinking effect
+    love.graphics.setFont(UI.fonts.message)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("A Radio Wave Mystery", 0, 120, 800, "center")
+
+    -- Story text
+    local storyText = [[
+Something is wrong with the airwaves.
+
+Strange transmissions have been detected
+across the frequency spectrum.
+
+Your mission: Tune the radio receiver,
+lock onto the signals, and decode
+the mysterious messages.
+
+But be warned...
+Some secrets are better left buried
+beneath the static.
+]]
+
+    love.graphics.setFont(UI.fonts.message)
+    love.graphics.setColor(Config.colors.white)
+    love.graphics.printf(storyText, 100, 180, 600, "center")
+
+    -- Volume control
+    UI.drawVolumeControl()
+
+    -- Controls
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("CONTROLS:", 100, 420, 600, "center")
+
+    love.graphics.setColor(Config.colors.white)
+    love.graphics.printf("Arrow Keys / A & D - Tune Frequency\nSPACE - Decode Message\nArrow Keys / W & S - Adjust Volume\nESC - Quit", 100, 440, 600, "center")
+
+    -- Start prompt with blinking effect
+    local blink = math.sin(love.timer.getTime() * 3) > 0
+    if blink then
+        love.graphics.setFont(UI.fonts.title)
+        love.graphics.setColor(Config.colors.green)
+        love.graphics.printf(">>> PRESS SPACE TO BEGIN <<<", 0, 530, 800, "center")
+    end
+end
+
+function UI.drawVolumeControl()
+    local volumeBarX = 720
+    local volumeBarY = 200
+    local volumeBarWidth = 30
+    local volumeBarHeight = 250
+
+    -- Label (rotated text effect by placing it above)
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("VOLUME", volumeBarX - 15, volumeBarY - 25, 60, "center")
+
+    -- Volume bar background
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.rectangle("fill", volumeBarX, volumeBarY, volumeBarWidth, volumeBarHeight)
+
+    -- Volume bar fill (from bottom up)
+    local volumePercent = Audio.masterVolume
+    local fillHeight = volumeBarHeight * volumePercent
+    love.graphics.setColor(Config.colors.green)
+    love.graphics.rectangle("fill", volumeBarX, volumeBarY + volumeBarHeight - fillHeight, volumeBarWidth, fillHeight)
+
+    -- Volume percentage text
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.white)
+    love.graphics.printf(string.format("%d%%", math.floor(volumePercent * 100)), volumeBarX - 15, volumeBarY + volumeBarHeight + 10, 60, "center")
+
+    -- Up/Down arrows indicator
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("▲", volumeBarX - 15, volumeBarY - 45, 60, "center")
+    love.graphics.printf("▼", volumeBarX - 15, volumeBarY + volumeBarHeight + 30, 60, "center")
 end
 
 return UI
