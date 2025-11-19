@@ -3,6 +3,7 @@ Game = {}
 function Game.init()
     Game.gameState = "start"  -- Can be "start" or "playing"
     Game.journalOpen = false  -- Track if journal is open
+    Game.journalScrollOffset = 0  -- Track journal scroll position
 
     -- Band system
     Game.bands = Config.bands
@@ -101,7 +102,20 @@ end
 function Game.toggleJournal()
     if Game.gameState == "playing" then
         Game.journalOpen = not Game.journalOpen
+        -- Reset scroll when opening journal
+        if Game.journalOpen then
+            Game.journalScrollOffset = 0
+        end
     end
+end
+
+function Game.scrollJournal(direction)
+    -- direction: positive for down, negative for up
+    local scrollSpeed = 30
+    Game.journalScrollOffset = Game.journalScrollOffset + (direction * scrollSpeed)
+
+    -- Clamp to valid range (will be further constrained in UI based on content)
+    Game.journalScrollOffset = math.max(0, Game.journalScrollOffset)
 end
 
 function Game.startGame()
@@ -326,6 +340,17 @@ function Game.keypressed(key)
     end
 
     -- Handle gameplay
+    -- Handle journal scrolling when journal is open
+    if Game.journalOpen then
+        if key == "w" or key == "up" then
+            Game.scrollJournal(-1)  -- Scroll up
+            return
+        elseif key == "s" or key == "down" then
+            Game.scrollJournal(1)  -- Scroll down
+            return
+        end
+    end
+
     if key == "q" then
         -- Switch to previous band
         if not Game.journalOpen then

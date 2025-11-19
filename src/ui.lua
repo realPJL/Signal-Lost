@@ -550,64 +550,156 @@ function UI.drawJournal()
     -- Instructions
     love.graphics.setFont(UI.fonts.small)
     love.graphics.setColor(Config.colors.greenDim)
-    love.graphics.printf("Press J or TAB to close | ESC to close", panelX, panelY + 40, panelWidth, "center")
+    love.graphics.printf("W/S or UP/DOWN to scroll | J/TAB/ESC to close", panelX, panelY + 40, panelWidth, "center")
 
     -- Separator line
     love.graphics.setColor(Config.colors.greenDim)
     love.graphics.line(panelX + 20, panelY + 65, panelX + panelWidth - 20, panelY + 65)
 
-    -- List decoded messages
-    local yOffset = panelY + 80
-    local entryHeight = 85
-    local decodedCount = 0
+    -- List messages grouped by band
+    local contentStartY = panelY + 75
+    local yOffset = contentStartY - Game.journalScrollOffset  -- Apply scroll offset
+    local entryHeight = 70
+    local bandHeaderHeight = 25
+    local totalDecoded = 0
+    local viewportTop = contentStartY
+    local viewportBottom = panelY + panelHeight - 20
+    local totalContentHeight = 0  -- Track total content height for scroll clamping
 
-    for i, msg in ipairs(Game.messages) do
-        if msg.decoded then
-            decodedCount = decodedCount + 1
+    -- Enable scissor for clipping content to viewport
+    love.graphics.setScissor(panelX + 20, viewportTop, panelWidth - 40, viewportBottom - viewportTop)
 
-            -- Entry background
-            love.graphics.setColor(Config.colors.background)
-            love.graphics.rectangle("fill", panelX + 20, yOffset, panelWidth - 40, entryHeight)
+    for bandIndex, band in ipairs(Game.bands) do
+        -- Count decoded messages in this band
+        local bandDecoded = 0
+        for _, msg in ipairs(band.messages) do
+            if msg.decoded then
+                bandDecoded = bandDecoded + 1
+                totalDecoded = totalDecoded + 1
+            end
+        end
 
-            -- Entry border
-            love.graphics.setColor(Config.colors.greenDim)
-            love.graphics.rectangle("line", panelX + 20, yOffset, panelWidth - 40, entryHeight)
+        -- Show band if it has decoded messages OR if it's unlocked
+        if bandDecoded > 0 or band.unlocked then
+            -- Band header
+            love.graphics.setColor(band.color[1], band.color[2], band.color[3], 0.3)
+            love.graphics.rectangle("fill", panelX + 20, yOffset, panelWidth - 40, bandHeaderHeight)
 
-            -- Frequency
+            love.graphics.setColor(band.color)
+            love.graphics.rectangle("line", panelX + 20, yOffset, panelWidth - 40, bandHeaderHeight)
+
             love.graphics.setFont(UI.fonts.message)
-            love.graphics.setColor(Config.colors.yellow)
+            love.graphics.setColor(band.color)
             love.graphics.printf(
-                string.format("%.1f MHz", msg.frequency),
-                panelX + 30, yOffset + 5, 150, "left"
+                string.format("%s (%d/%d)", band.name, bandDecoded, #band.messages),
+                panelX + 30, yOffset + 5, panelWidth - 60, "left"
             )
 
-            -- Morse code
-            love.graphics.setFont(UI.fonts.small)
-            love.graphics.setColor(Config.colors.green)
+            yOffset = yOffset + bandHeaderHeight + 5
+
+            -- Show decoded messages from this band
+            if bandDecoded > 0 then
+                for _, msg in ipairs(band.messages) do
+                    if msg.decoded then
+                        -- Entry background
+                        love.graphics.setColor(Config.colors.background)
+                        love.graphics.rectangle("fill", panelX + 30, yOffset, panelWidth - 60, entryHeight)
+
+                        -- Entry border
+                        love.graphics.setColor(band.colorDim)
+                        love.graphics.rectangle("line", panelX + 30, yOffset, panelWidth - 60, entryHeight)
+
+                        -- Frequency and Morse code on same line
+                        love.graphics.setFont(UI.fonts.small)
+                        love.graphics.setColor(band.color)
+                        love.graphics.printf(
+                            string.format("%.1f MHz | MORSE: %s", msg.frequency, msg.morse or "N/A"),
+                            panelX + 40, yOffset + 5, panelWidth - 80, "left"
+                        )
+
+                        -- Message text
+                        love.graphics.setFont(UI.fonts.small)
+                        love.graphics.setColor(Config.colors.white)
+                        love.graphics.printf(
+                            msg.text,
+                            panelX + 40, yOffset + 22, panelWidth - 80, "left"
+                        )
+
+                        yOffset = yOffset + entryHeight + 5
+                    end
+                end
+            elseif band.unlocked and bandDecoded == 0 then
+                -- Show hint for unlocked but empty bands
+                love.graphics.setFont(UI.fonts.small)
+                love.graphics.setColor(Config.colors.greenDim)
+                love.graphics.printf(
+                    "No messages decoded yet.",
+                    panelX + 40, yOffset + 5, panelWidth - 80, "left"
+                )
+                yOffset = yOffset + 25
+            end
+
+            yOffset = yOffset + 5  -- Spacing between bands
+        elseif not band.unlocked then
+            -- Show locked band with unlock hint
+            -- Locked band header
+            love.graphics.setColor(0.2, 0.2, 0.2, 0.3)
+            love.graphics.rectangle("fill", panelX + 20, yOffset, panelWidth - 40, bandHeaderHeight)
+
+            love.graphics.setColor(0.4, 0.4, 0.4)
+            love.graphics.rectangle("line", panelX + 20, yOffset, panelWidth - 40, bandHeaderHeight)
+
+            love.graphics.setFont(UI.fonts.message)
+            love.graphics.setColor(0.5, 0.5, 0.5)
             love.graphics.printf(
-                "MORSE: " .. (msg.morse or "N/A"),
-                panelX + 200, yOffset + 8, panelWidth - 220, "left"
+                band.name .. " - LOCKED",
+                panelX + 30, yOffset + 5, panelWidth - 60, "left"
             )
 
-            -- Message text
-            love.graphics.setFont(UI.fonts.small)
-            love.graphics.setColor(Config.colors.white)
-            love.graphics.printf(
-                msg.text,
-                panelX + 30, yOffset + 28, panelWidth - 60, "left"
-            )
+            yOffset = yOffset + bandHeaderHeight + 5
 
-            yOffset = yOffset + entryHeight + 10
-
-            -- Stop if we run out of space
-            if yOffset > panelY + panelHeight - 50 then
-                break
+            -- Unlock hint
+            if band.unlockHint then
+                love.graphics.setFont(UI.fonts.small)
+                love.graphics.setColor(Config.colors.greenDim)
+                love.graphics.printf(
+                    "Unlock: " .. band.unlockHint,
+                    panelX + 40, yOffset, panelWidth - 80, "left"
+                )
+                yOffset = yOffset + 25
             end
         end
     end
 
+    -- Calculate total content height
+    totalContentHeight = (yOffset + Game.journalScrollOffset) - contentStartY
+
+    -- Disable scissor
+    love.graphics.setScissor()
+
+    -- Clamp scroll offset to valid range
+    local maxScroll = math.max(0, totalContentHeight - (viewportBottom - viewportTop))
+    Game.journalScrollOffset = math.min(Game.journalScrollOffset, maxScroll)
+
+    -- Show scroll indicators
+    if totalContentHeight > (viewportBottom - viewportTop) then
+        -- Can scroll down
+        if Game.journalScrollOffset < maxScroll then
+            love.graphics.setFont(UI.fonts.small)
+            love.graphics.setColor(Config.colors.green)
+            love.graphics.printf("▼ MORE ▼", panelX, viewportBottom, panelWidth, "center")
+        end
+
+        -- Can scroll up
+        if Game.journalScrollOffset > 0 then
+            love.graphics.setFont(UI.fonts.small)
+            love.graphics.setColor(Config.colors.green)
+            love.graphics.printf("▲ MORE ▲", panelX, viewportTop - 15, panelWidth, "center")
+        end
+    end
+
     -- Show message if no decoded messages yet
-    if decodedCount == 0 then
+    if totalDecoded == 0 then
         love.graphics.setFont(UI.fonts.message)
         love.graphics.setColor(Config.colors.greenDim)
         love.graphics.printf(
