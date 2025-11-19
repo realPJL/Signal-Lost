@@ -207,7 +207,7 @@ function UI.drawInstructions()
     love.graphics.setFont(UI.fonts.message)
     love.graphics.setColor(Config.colors.greenDim)
     love.graphics.printf(
-        "Tune to find signals...\n\nUse arrow keys or A/D to adjust frequency\nUse TAB or J to open your Journal\nLock onto signals to receive transmissions",
+        "Tune to find signals...\n\nArrows/A & D - Tune | Q & E - Switch Bands\nTAB/J - Journal | Lock onto signals to decode",
         70, 320, 660, "center"
     )
 end
@@ -261,7 +261,7 @@ beneath the static.
     love.graphics.printf("CONTROLS:", 100, 410, 600, "center")
 
     love.graphics.setColor(Config.colors.white)
-    love.graphics.printf("Arrow Keys / A & D - Tune Frequency\nSPACE - Decode Message\nJ or TAB - Open Journal\nArrow Keys / W & S - Adjust Volume\nESC - Quit", 100, 430, 600, "center")
+    love.graphics.printf("Arrow Keys / A & D - Tune Frequency\nQ & E - Switch Bands | 1-5 - Select Band\nSPACE - Decode Message | J/TAB - Journal\nUP/DOWN - Volume | ESC - Quit", 100, 430, 600, "center")
 
     -- Start prompt with blinking effect
     local blink = math.sin(love.timer.getTime() * 3) > 0

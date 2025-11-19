@@ -121,11 +121,14 @@ function Game.update(dt)
         Game.state.currentFrequency = Game.state.currentFrequency - Config.frequency.tuningSpeed
     end
 
-    -- Clamp frequency to FM range
-    Game.state.currentFrequency = math.max(
-        Config.frequency.min,
-        math.min(Config.frequency.max, Game.state.currentFrequency)
-    )
+    -- Clamp frequency to current band's range
+    local band = Game.getCurrentBand()
+    if band then
+        Game.state.currentFrequency = math.max(
+            band.minFreq,
+            math.min(band.maxFreq, Game.state.currentFrequency)
+        )
+    end
 
     -- Find nearest undecoded signal
     Game.findNearestSignal()
@@ -265,7 +268,42 @@ function Game.keypressed(key)
     end
 
     -- Handle gameplay
-    if key == "j" or key == "tab" then
+    if key == "q" then
+        -- Switch to previous band
+        if not Game.journalOpen then
+            Game.switchBand(-1)
+        end
+    elseif key == "e" then
+        -- Switch to next band
+        if not Game.journalOpen then
+            Game.switchBand(1)
+        end
+    elseif key == "1" then
+        -- Switch to band 1 (CIVILIAN)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(1)
+        end
+    elseif key == "2" then
+        -- Switch to band 2 (EMERGENCY)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(2)
+        end
+    elseif key == "3" then
+        -- Switch to band 3 (MILITARY)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(3)
+        end
+    elseif key == "4" then
+        -- Switch to band 4 (RESEARCH)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(4)
+        end
+    elseif key == "5" then
+        -- Switch to band 5 (UNKNOWN)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(5)
+        end
+    elseif key == "j" or key == "tab" then
         -- Toggle journal
         Game.toggleJournal()
     elseif key == "space" then
