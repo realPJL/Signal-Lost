@@ -4,8 +4,12 @@ function Game.init()
     Game.gameState = "start"  -- Can be "start" or "playing"
     Game.journalOpen = false  -- Track if journal is open
 
+    -- Band system
+    Game.bands = Config.bands
+    Game.currentBandIndex = 1  -- Start with first band (CIVILIAN)
+
     Game.state = {
-        currentFrequency = 90.0,
+        currentFrequency = 85.0,  -- Start in civilian band range
         targetFrequency = 95.5,
         lockedOn = false,
         signalStrength = 0,
@@ -13,7 +17,84 @@ function Game.init()
         currentMessage = 1
     }
 
-    Game.messages = Config.messages
+    -- Build flat messages array from current band for backward compatibility
+    Game.messages = Game.getCurrentBandMessages()
+end
+
+function Game.getCurrentBand()
+    return Game.bands[Game.currentBandIndex]
+end
+
+function Game.getCurrentBandMessages()
+    local band = Game.getCurrentBand()
+    return band and band.messages or {}
+end
+
+function Game.switchBand(direction)
+    -- direction: 1 for next, -1 for previous
+    local newIndex = Game.currentBandIndex + direction
+
+    -- Wrap around
+    if newIndex < 1 then
+        newIndex = #Game.bands
+    elseif newIndex > #Game.bands then
+        newIndex = 1
+    end
+
+    -- Check if band is unlocked
+    if Game.bands[newIndex].unlocked then
+        Game.currentBandIndex = newIndex
+
+        -- Reset frequency to band's range
+        local band = Game.getCurrentBand()
+        Game.state.currentFrequency = band.minFreq + (band.maxFreq - band.minFreq) / 2
+
+        -- Update messages array
+        Game.messages = Game.getCurrentBandMessages()
+
+        -- Reset lock state
+        Game.state.lockedOn = false
+        Game.state.messageRevealed = false
+
+        -- Stop any playing morse code
+        if Audio then
+            Audio.stopMorseCode()
+            Audio.beepsEnabled = true
+        end
+
+        return true
+    end
+
+    return false
+end
+
+function Game.switchToBandNumber(bandNumber)
+    if bandNumber >= 1 and bandNumber <= #Game.bands then
+        if Game.bands[bandNumber].unlocked then
+            Game.currentBandIndex = bandNumber
+
+            -- Reset frequency to band's range
+            local band = Game.getCurrentBand()
+            Game.state.currentFrequency = band.minFreq + (band.maxFreq - band.minFreq) / 2
+
+            -- Update messages array
+            Game.messages = Game.getCurrentBandMessages()
+
+            -- Reset lock state
+            Game.state.lockedOn = false
+            Game.state.messageRevealed = false
+
+            -- Stop any playing morse code
+            if Audio then
+                Audio.stopMorseCode()
+                Audio.beepsEnabled = true
+            end
+
+            return true
+        end
+    end
+
+    return false
 end
 
 function Game.toggleJournal()
