@@ -31,7 +31,7 @@ function Effects.init()
             uv = uv + offset;
             
             // Vignette effect
-            float vignette = smoothstep(0.7, 0.3, dist);
+            float vignette = smoothstep(1.5, 0.3, dist);
             
             // Check if UV is out of bounds (black edges from curvature)
             if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
