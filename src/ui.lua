@@ -35,10 +35,13 @@ end
 function UI.draw()
     UI.drawBackground()
 
-    -- Show start screen or gameplay
+    -- Show start screen, ending screen, or gameplay
     if Game.gameState == "start" then
         UI.drawStartScreen()
+    elseif Game.gameState == "ending" then
+        UI.drawEndingScreen()
     else
+        -- Playing state
         UI.drawTitle()
         UI.drawBandSelector()
         UI.drawRadioPanel()
@@ -433,6 +436,61 @@ beneath the static.
         love.graphics.setColor(Config.colors.green)
         love.graphics.printf(">>> PRESS SPACE TO BEGIN <<<", 0, 530, 800, "center")
     end
+end
+
+function UI.drawEndingScreen()
+    -- Title
+    love.graphics.setFont(UI.fonts.title)
+    love.graphics.setColor(Config.colors.green)
+    love.graphics.printf("SIGNAL LOST", 0, 60, 800, "center")
+
+    -- Victory subtitle
+    love.graphics.setFont(UI.fonts.title)
+    love.graphics.setColor(Config.colors.cyan)
+    love.graphics.printf("ALL TRANSMISSIONS DECODED", 0, 110, 800, "center")
+
+    -- Story conclusion text
+    local endingText = [[
+You have listened to all the transmissions.
+The pieces of the puzzle are now clear.
+
+Something ancient sleeps beneath the waves.
+Something that has been singing for millennia.
+A lullaby from the depths, calling...
+
+The coastal zone is lost.
+The signals continue to spread.
+And now you understand why some secrets
+are better left buried beneath the static.
+
+The waves remember.
+The waves call.
+The waves sing.]]
+
+    love.graphics.setFont(UI.fonts.message)
+    love.graphics.setColor(Config.colors.white)
+    love.graphics.printf(endingText, 100, 170, 600, "center")
+
+    -- Credits
+    love.graphics.setFont(UI.fonts.message)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("Thanks for playing!", 0, 420, 800, "center")
+
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("Code: Claude & Paul | Story & Idea: Paul", 0, 450, 800, "center")
+
+    -- Options with blinking effect for restart
+    local blink = math.sin(love.timer.getTime() * 3) > 0
+    if blink then
+        love.graphics.setFont(UI.fonts.message)
+        love.graphics.setColor(Config.colors.green)
+        love.graphics.printf(">>> PRESS SPACE TO RESTART <<<", 0, 510, 800, "center")
+    end
+
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("ESC - Quit", 0, 550, 800, "center")
 end
 
 function UI.drawVolumeControl()

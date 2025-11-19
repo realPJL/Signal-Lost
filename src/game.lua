@@ -1,7 +1,7 @@
 Game = {}
 
 function Game.init()
-    Game.gameState = "start"  -- Can be "start" or "playing"
+    Game.gameState = "start"  -- Can be "start", "playing", or "ending"
     Game.journalOpen = false  -- Track if journal is open
     Game.journalScrollOffset = 0  -- Track journal scroll position
 
@@ -122,9 +122,15 @@ function Game.startGame()
     Game.gameState = "playing"
 end
 
+function Game.restartGame()
+    -- Reinitialize all game state
+    Config.init()
+    Game.init()
+end
+
 function Game.update(dt)
-    -- Don't update game logic if on start screen
-    if Game.gameState == "start" then
+    -- Don't update game logic if on start screen or ending screen
+    if Game.gameState == "start" or Game.gameState == "ending" then
         return
     end
 
@@ -305,9 +311,8 @@ function Game.allBandsDecoded()
 end
 
 function Game.showVictoryMessage()
-    Game.messages[1].text = "ALL TRANSMISSIONS DECODED\n\nThe mystery deepens...\nWhat lies beneath the waves?\n\nThanks for playing!\nCode: Claude & Paul\nStory & Idea: Paul"
-    Game.messages[1].decoded = false
-    Game.state.currentMessage = 1
+    -- Transition to ending screen
+    Game.gameState = "ending"
 end
 
 function Game.getDecodedCount()
@@ -333,6 +338,16 @@ function Game.keypressed(key)
             if Audio then
                 Audio.setMasterVolume(Audio.masterVolume - 0.1)
             end
+        elseif key == "escape" then
+            love.event.quit()
+        end
+        return
+    end
+
+    -- Handle ending screen
+    if Game.gameState == "ending" then
+        if key == "space" or key == "return" then
+            Game.restartGame()
         elseif key == "escape" then
             love.event.quit()
         end
