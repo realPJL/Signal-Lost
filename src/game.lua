@@ -3,9 +3,15 @@ Game = {}
 function Game.init()
     Game.gameState = "start"  -- Can be "start" or "playing"
     Game.journalOpen = false  -- Track if journal is open
+    Game.journalScrollOffset = 0  -- Track journal scroll position
+
+    -- Band system
+    Game.bands = Config.bands
+    Game.currentBandIndex = 1  -- Start with first band (CIVILIAN)
+    Game.lastUnlockedBand = nil  -- Track newly unlocked bands for notifications
 
     Game.state = {
-        currentFrequency = 90.0,
+        currentFrequency = 85.0,  -- Start in civilian band range
         targetFrequency = 95.5,
         lockedOn = false,
         signalStrength = 0,
@@ -13,13 +19,103 @@ function Game.init()
         currentMessage = 1
     }
 
-    Game.messages = Config.messages
+    -- Build flat messages array from current band for backward compatibility
+    Game.messages = Game.getCurrentBandMessages()
+end
+
+function Game.getCurrentBand()
+    return Game.bands[Game.currentBandIndex]
+end
+
+function Game.getCurrentBandMessages()
+    local band = Game.getCurrentBand()
+    return band and band.messages or {}
+end
+
+function Game.switchBand(direction)
+    -- direction: 1 for next, -1 for previous
+    local newIndex = Game.currentBandIndex + direction
+
+    -- Wrap around
+    if newIndex < 1 then
+        newIndex = #Game.bands
+    elseif newIndex > #Game.bands then
+        newIndex = 1
+    end
+
+    -- Check if band is unlocked
+    if Game.bands[newIndex].unlocked then
+        Game.currentBandIndex = newIndex
+
+        -- Reset frequency to band's range
+        local band = Game.getCurrentBand()
+        Game.state.currentFrequency = band.minFreq + (band.maxFreq - band.minFreq) / 2
+
+        -- Update messages array
+        Game.messages = Game.getCurrentBandMessages()
+
+        -- Reset lock state
+        Game.state.lockedOn = false
+        Game.state.messageRevealed = false
+
+        -- Stop any playing morse code
+        if Audio then
+            Audio.stopMorseCode()
+            Audio.beepsEnabled = true
+        end
+
+        return true
+    end
+
+    return false
+end
+
+function Game.switchToBandNumber(bandNumber)
+    if bandNumber >= 1 and bandNumber <= #Game.bands then
+        if Game.bands[bandNumber].unlocked then
+            Game.currentBandIndex = bandNumber
+
+            -- Reset frequency to band's range
+            local band = Game.getCurrentBand()
+            Game.state.currentFrequency = band.minFreq + (band.maxFreq - band.minFreq) / 2
+
+            -- Update messages array
+            Game.messages = Game.getCurrentBandMessages()
+
+            -- Reset lock state
+            Game.state.lockedOn = false
+            Game.state.messageRevealed = false
+
+            -- Stop any playing morse code
+            if Audio then
+                Audio.stopMorseCode()
+                Audio.beepsEnabled = true
+            end
+
+            return true
+        end
+    end
+
+    return false
 end
 
 function Game.toggleJournal()
     if Game.gameState == "playing" then
         Game.journalOpen = not Game.journalOpen
+        -- Reset scroll when opening journal
+        if Game.journalOpen then
+            Game.journalScrollOffset = 0
+        end
     end
+end
+
+function Game.scrollJournal(direction)
+    -- direction: positive for down, negative for up
+    local scrollSpeed = 30
+    Game.journalScrollOffset = Game.journalScrollOffset + (direction * scrollSpeed)
+
+    -- Clamp to valid range (will be further constrained in UI based on content)
+    Game.journalScrollOffset = math.max(0, Game.journalScrollOffset)
 end
 
 function Game.startGame()
@@ -40,11 +136,14 @@ function Game.update(dt)
         Game.state.currentFrequency = Game.state.currentFrequency - Config.frequency.tuningSpeed
     end
 
-    -- Clamp frequency to FM range
-    Game.state.currentFrequency = math.max(
-        Config.frequency.min,
-        math.min(Config.frequency.max, Game.state.currentFrequency)
-    )
+    -- Clamp frequency to current band's range
+    local band = Game.getCurrentBand()
+    if band then
+        Game.state.currentFrequency = math.max(
+            band.minFreq,
+            math.min(band.maxFreq, Game.state.currentFrequency)
+        )
+    end
 
     -- Find nearest undecoded signal
     Game.findNearestSignal()
@@ -148,6 +247,63 @@ function Game.allMessagesDecoded()
     return true
 end
 
+function Game.checkBandComplete(bandIndex)
+    -- Check if all messages in a specific band are decoded
+    local band = Game.bands[bandIndex]
+    if not band then return false end
+
+    for _, msg in ipairs(band.messages) do
+        if not msg.decoded then
+            return false
+        end
+    end
+    return true
+end
+
+function Game.checkAndUnlockNextBands()
+    -- Check each band and unlock the next one if all messages are decoded
+    for i = 1, #Game.bands - 1 do
+        if Game.bands[i].unlocked and Game.checkBandComplete(i) then
+            if not Game.bands[i + 1].unlocked then
+                -- Unlock next band
+                Game.bands[i + 1].unlocked = true
+
+                -- Store for UI notification
+                Game.lastUnlockedBand = {
+                    index = i + 1,
+                    name = Game.bands[i + 1].name,
+                    time = love.timer.getTime()
+                }
+
+                -- Play unlock sound
+                if Audio then
+                    Audio.playDecodeSound()
+                end
+
+                -- Trigger glitch effect
+                if Effects then
+                    Effects.triggerGlitch(0.3)
+                end
+
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function Game.allBandsDecoded()
+    -- Check if all messages in all bands are decoded
+    for _, band in ipairs(Game.bands) do
+        for _, msg in ipairs(band.messages) do
+            if not msg.decoded then
+                return false
+            end
+        end
+    end
+    return true
+end
+
 function Game.showVictoryMessage()
     Game.messages[1].text = "ALL TRANSMISSIONS DECODED\n\nThe mystery deepens...\nWhat lies beneath the waves?\n\nThanks for playing!\nCode: Claude & Paul\nStory & Idea: Paul"
     Game.messages[1].decoded = false
@@ -184,7 +340,53 @@ function Game.keypressed(key)
     end
 
     -- Handle gameplay
-    if key == "j" or key == "tab" then
+    -- Handle journal scrolling when journal is open
+    if Game.journalOpen then
+        if key == "w" or key == "up" then
+            Game.scrollJournal(-1)  -- Scroll up
+            return
+        elseif key == "s" or key == "down" then
+            Game.scrollJournal(1)  -- Scroll down
+            return
+        end
+    end
+
+    if key == "q" then
+        -- Switch to previous band
+        if not Game.journalOpen then
+            Game.switchBand(-1)
+        end
+    elseif key == "e" then
+        -- Switch to next band
+        if not Game.journalOpen then
+            Game.switchBand(1)
+        end
+    elseif key == "1" then
+        -- Switch to band 1 (CIVILIAN)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(1)
+        end
+    elseif key == "2" then
+        -- Switch to band 2 (EMERGENCY)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(2)
+        end
+    elseif key == "3" then
+        -- Switch to band 3 (MILITARY)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(3)
+        end
+    elseif key == "4" then
+        -- Switch to band 4 (RESEARCH)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(4)
+        end
+    elseif key == "5" then
+        -- Switch to band 5 (UNKNOWN)
+        if not Game.journalOpen then
+            Game.switchToBandNumber(5)
+        end
+    elseif key == "j" or key == "tab" then
         -- Toggle journal
         Game.toggleJournal()
     elseif key == "space" then
@@ -231,8 +433,11 @@ function Game.keypressed(key)
             Game.state.lockedOn = false
             Game.state.messageRevealed = false
 
-            -- Check if all messages decoded
-            if Game.allMessagesDecoded() then
+            -- Check if current band is complete and unlock next band
+            Game.checkAndUnlockNextBands()
+
+            -- Check if all bands decoded (victory condition)
+            if Game.allBandsDecoded() then
                 Game.showVictoryMessage()
             end
         end
