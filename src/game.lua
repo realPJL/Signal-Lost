@@ -2,6 +2,7 @@ Game = {}
 
 function Game.init()
     Game.gameState = "start"  -- Can be "start" or "playing"
+    Game.journalOpen = false  -- Track if journal is open
 
     Game.state = {
         currentFrequency = 90.0,
@@ -13,6 +14,12 @@ function Game.init()
     }
 
     Game.messages = Config.messages
+end
+
+function Game.toggleJournal()
+    if Game.gameState == "playing" then
+        Game.journalOpen = not Game.journalOpen
+    end
 end
 
 function Game.startGame()
@@ -177,7 +184,12 @@ function Game.keypressed(key)
     end
 
     -- Handle gameplay
-    if key == "space" then
+    if key == "j" or key == "tab" then
+        -- Toggle journal
+        Game.toggleJournal()
+    elseif key == "space" then
+        -- Don't allow message interaction when journal is open
+        if Game.journalOpen then return end
         if not Game.state.lockedOn then return end
 
         local idx = Game.state.currentMessage
@@ -225,7 +237,12 @@ function Game.keypressed(key)
             end
         end
     elseif key == "escape" then
-        love.event.quit()
+        -- Close journal if open, otherwise quit
+        if Game.journalOpen then
+            Game.journalOpen = false
+        else
+            love.event.quit()
+        end
     end
 end
 
