@@ -142,10 +142,14 @@ function UI.drawMessagePanel()
     love.graphics.setColor(Config.colors.panel)
     love.graphics.rectangle("fill", 50, Config.ui.messageY, 700, Config.ui.messageHeight)
     
-    if Game.state.messageRevealed and Game.messages[Game.state.currentMessage] then
+    if Game.state.lockedOn and not Game.state.messageRevealed then
+        -- Show "MESSAGE FOUND" when locked but not yet decoded
+        UI.drawMessageFound()
+    elseif Game.state.messageRevealed and Game.messages[Game.state.currentMessage] then
+        -- Show actual message after pressing SPACE
         UI.drawMessage()
-        UI.drawDecodeButton()
     else
+        -- Show instructions when not locked
         UI.drawInstructions()
     end
 end
@@ -157,6 +161,9 @@ function UI.drawMessage()
         Game.messages[Game.state.currentMessage].text,
         70, 300, 660, "left"
     )
+    
+    -- Show decode button
+    UI.drawDecodeButton()
 end
 
 function UI.drawDecodeButton()
@@ -164,7 +171,25 @@ function UI.drawDecodeButton()
     love.graphics.setColor(Config.colors.greenDim)
     love.graphics.rectangle("fill", 325, 520, 150, 30)
     love.graphics.setColor(Config.colors.green)
-    love.graphics.printf("DECODE [SPACE]", 325, 527, 150, "center")
+    love.graphics.printf("SAVE MSG [SPACE]", 325, 527, 150, "center")
+end
+
+function UI.drawMessageFound()
+    love.graphics.setFont(UI.fonts.title)
+    love.graphics.setColor(Config.colors.green)
+    
+    -- Blinking effect
+    local blink = math.sin(love.timer.getTime() * 3) > 0
+    if blink then
+        love.graphics.printf(">>> MESSAGE FOUND <<<", 50, 350, 700, "center")
+    end
+    
+    love.graphics.setFont(UI.fonts.message)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf(
+        "\n\n\n\nPress SPACE to decode transmission",
+        50, 350, 700, "center"
+    )
 end
 
 function UI.drawInstructions()

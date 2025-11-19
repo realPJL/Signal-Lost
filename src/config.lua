@@ -14,8 +14,8 @@ function Config.init()
     
     -- Frequency settings
     Config.frequency = {
-        min = 88.0,
-        max = 108.0,
+        min = 80.0,
+        max = 120.0,
         tuningSpeed = 0.1
     }
     
@@ -29,23 +29,33 @@ function Config.init()
     -- Messages
     Config.messages = {
         {
+            frequency = 83.2,
+            text = "...is anyone out there? This is Station ...\nIf you can ..., please respond.\nThe waves... they're not na...\nREPEAT NOT....",
+            morse = "SOS SOS",
+            decoded = false
+        },
+        {
             frequency = 95.5,
-            text = "...is anyone out there? This is Station Alpha...\nIf you can hear this, please respond.\nThe waves... they're not natural.",
+            text = "Final transmission Station ...: If you're hearing this,\nwe're already gone. The waves carry something.\nSomething ancient. Don't listen too long.",
+            morse = "GOODBYE",
             decoded = false
         },
         {
             frequency = 102.3,
-            text = "Day 47: The interference is getting stronger.\nWe've lost contact with the mainland.\nThe pattern repeats every 6 hours.",
+            text = "Day 47: The interference is getting stronger.\nWe've lost contact with ....\nThe pattern repeats every ... hours.",
+            morse = "DAY 47",
             decoded = false
         },
         {
             frequency = 107.8,
             text = "URGENT: Do not approach the shoreline.\nThe sound... it's calling them.\nWe were wrong about everything.",
+            morse = "DANGER",
             decoded = false
         },
         {
-            frequency = 88.1,
-            text = "Final transmission: If you're hearing this,\nwe're already gone. The waves carry something.\nSomething ancient. Don't listen too long.",
+            frequency = 115.1,
+            text = "... REPEAT RECON TEAM DELTA UNDER HEAVY FIRE ...",
+            morse = "SOS",
             decoded = false
         }
     }
