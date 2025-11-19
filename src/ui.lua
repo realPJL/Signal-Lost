@@ -474,11 +474,11 @@ The waves sing.]]
     -- Credits
     love.graphics.setFont(UI.fonts.message)
     love.graphics.setColor(Config.colors.greenDim)
-    love.graphics.printf("Thanks for playing!", 0, 420, 800, "center")
+    love.graphics.printf("Thanks for playing!", 0, 470, 800, "center")
 
     love.graphics.setFont(UI.fonts.small)
     love.graphics.setColor(Config.colors.greenDim)
-    love.graphics.printf("Code: Claude & Paul | Story & Idea: Paul", 0, 450, 800, "center")
+    love.graphics.printf("Code: Claude & Paul | Story & Idea: Paul", 0, 490, 800, "center")
 
     -- Options with blinking effect for restart
     local blink = math.sin(love.timer.getTime() * 3) > 0
