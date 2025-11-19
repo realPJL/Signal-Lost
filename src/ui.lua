@@ -48,6 +48,9 @@ function UI.draw()
         if Game.journalOpen then
             UI.drawJournal()
         end
+
+        -- Draw band unlock notification if recent
+        UI.drawBandUnlockNotification()
     end
 end
 
@@ -303,6 +306,62 @@ function UI.drawVolumeControl()
     love.graphics.setColor(Config.colors.greenDim)
     love.graphics.printf("▲", volumeBarX - 15, volumeBarY - 45, 60, "center")
     love.graphics.printf("▼", volumeBarX - 15, volumeBarY + volumeBarHeight + 30, 60, "center")
+end
+
+function UI.drawBandUnlockNotification()
+    if not Game.lastUnlockedBand then return end
+
+    -- Show notification for 4 seconds
+    local elapsed = love.timer.getTime() - Game.lastUnlockedBand.time
+    if elapsed > 4 then
+        Game.lastUnlockedBand = nil
+        return
+    end
+
+    -- Fade in/out effect
+    local alpha = 1.0
+    if elapsed < 0.3 then
+        alpha = elapsed / 0.3
+    elseif elapsed > 3.5 then
+        alpha = (4 - elapsed) / 0.5
+    end
+
+    -- Semi-transparent background
+    love.graphics.setColor(0, 0, 0, 0.7 * alpha)
+    love.graphics.rectangle("fill", 150, 200, 500, 200)
+
+    -- Border with band color
+    local band = Game.bands[Game.lastUnlockedBand.index]
+    if band then
+        love.graphics.setColor(band.color[1], band.color[2], band.color[3], alpha)
+        love.graphics.setLineWidth(3)
+        love.graphics.rectangle("line", 150, 200, 500, 200)
+        love.graphics.setLineWidth(1)
+    end
+
+    -- Title
+    love.graphics.setFont(UI.fonts.title)
+    love.graphics.setColor(Config.colors.green[1], Config.colors.green[2], Config.colors.green[3], alpha)
+    love.graphics.printf("BAND UNLOCKED", 150, 220, 500, "center")
+
+    -- Band name
+    love.graphics.setFont(UI.fonts.title)
+    if band then
+        love.graphics.setColor(band.color[1], band.color[2], band.color[3], alpha)
+        love.graphics.printf(band.name, 150, 260, 500, "center")
+    end
+
+    -- Description
+    love.graphics.setFont(UI.fonts.message)
+    love.graphics.setColor(Config.colors.white[1], Config.colors.white[2], Config.colors.white[3], alpha)
+    if band then
+        love.graphics.printf(band.description, 150, 300, 500, "center")
+    end
+
+    -- Hint
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim[1], Config.colors.greenDim[2], Config.colors.greenDim[3], alpha)
+    love.graphics.printf("Press " .. Game.lastUnlockedBand.index .. " or Q/E to switch", 150, 350, 500, "center")
 end
 
 function UI.drawJournal()

@@ -7,6 +7,7 @@ function Game.init()
     -- Band system
     Game.bands = Config.bands
     Game.currentBandIndex = 1  -- Start with first band (CIVILIAN)
+    Game.lastUnlockedBand = nil  -- Track newly unlocked bands for notifications
 
     Game.state = {
         currentFrequency = 85.0,  -- Start in civilian band range
@@ -232,6 +233,63 @@ function Game.allMessagesDecoded()
     return true
 end
 
+function Game.checkBandComplete(bandIndex)
+    -- Check if all messages in a specific band are decoded
+    local band = Game.bands[bandIndex]
+    if not band then return false end
+
+    for _, msg in ipairs(band.messages) do
+        if not msg.decoded then
+            return false
+        end
+    end
+    return true
+end
+
+function Game.checkAndUnlockNextBands()
+    -- Check each band and unlock the next one if all messages are decoded
+    for i = 1, #Game.bands - 1 do
+        if Game.bands[i].unlocked and Game.checkBandComplete(i) then
+            if not Game.bands[i + 1].unlocked then
+                -- Unlock next band
+                Game.bands[i + 1].unlocked = true
+
+                -- Store for UI notification
+                Game.lastUnlockedBand = {
+                    index = i + 1,
+                    name = Game.bands[i + 1].name,
+                    time = love.timer.getTime()
+                }
+
+                -- Play unlock sound
+                if Audio then
+                    Audio.playDecodeSound()
+                end
+
+                -- Trigger glitch effect
+                if Effects then
+                    Effects.triggerGlitch(0.3)
+                end
+
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function Game.allBandsDecoded()
+    -- Check if all messages in all bands are decoded
+    for _, band in ipairs(Game.bands) do
+        for _, msg in ipairs(band.messages) do
+            if not msg.decoded then
+                return false
+            end
+        end
+    end
+    return true
+end
+
 function Game.showVictoryMessage()
     Game.messages[1].text = "ALL TRANSMISSIONS DECODED\n\nThe mystery deepens...\nWhat lies beneath the waves?\n\nThanks for playing!\nCode: Claude & Paul\nStory & Idea: Paul"
     Game.messages[1].decoded = false
@@ -350,8 +408,11 @@ function Game.keypressed(key)
             Game.state.lockedOn = false
             Game.state.messageRevealed = false
 
-            -- Check if all messages decoded
-            if Game.allMessagesDecoded() then
+            -- Check if current band is complete and unlock next band
+            Game.checkAndUnlockNextBands()
+
+            -- Check if all bands decoded (victory condition)
+            if Game.allBandsDecoded() then
                 Game.showVictoryMessage()
             end
         end
