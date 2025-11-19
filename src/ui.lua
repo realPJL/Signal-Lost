@@ -43,6 +43,11 @@ function UI.draw()
         UI.drawRadioPanel()
         UI.drawMessagePanel()
         UI.drawStatusBar()
+
+        -- Draw journal overlay if open
+        if Game.journalOpen then
+            UI.drawJournal()
+        end
     end
 end
 
@@ -202,7 +207,7 @@ function UI.drawInstructions()
     love.graphics.setFont(UI.fonts.message)
     love.graphics.setColor(Config.colors.greenDim)
     love.graphics.printf(
-        "Tune to find signals...\n\nUse arrow keys or A/D to adjust frequency\nLock onto signals to receive transmissions",
+        "Tune to find signals...\n\nUse arrow keys or A/D to adjust frequency\nUse TAB or J to open your Journal\nLock onto signals to receive transmissions",
         70, 320, 660, "center"
     )
 end
@@ -253,10 +258,10 @@ beneath the static.
     -- Controls
     love.graphics.setFont(UI.fonts.small)
     love.graphics.setColor(Config.colors.greenDim)
-    love.graphics.printf("CONTROLS:", 100, 420, 600, "center")
+    love.graphics.printf("CONTROLS:", 100, 410, 600, "center")
 
     love.graphics.setColor(Config.colors.white)
-    love.graphics.printf("Arrow Keys / A & D - Tune Frequency\nSPACE - Decode Message\nArrow Keys / W & S - Adjust Volume\nESC - Quit", 100, 440, 600, "center")
+    love.graphics.printf("Arrow Keys / A & D - Tune Frequency\nSPACE - Decode Message\nJ or TAB - Open Journal\nArrow Keys / W & S - Adjust Volume\nESC - Quit", 100, 430, 600, "center")
 
     -- Start prompt with blinking effect
     local blink = math.sin(love.timer.getTime() * 3) > 0
@@ -298,6 +303,99 @@ function UI.drawVolumeControl()
     love.graphics.setColor(Config.colors.greenDim)
     love.graphics.printf("▲", volumeBarX - 15, volumeBarY - 45, 60, "center")
     love.graphics.printf("▼", volumeBarX - 15, volumeBarY + volumeBarHeight + 30, 60, "center")
+end
+
+function UI.drawJournal()
+    -- Semi-transparent overlay
+    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.rectangle("fill", 0, 0, 800, 600)
+
+    -- Journal panel
+    local panelX = 50
+    local panelY = 40
+    local panelWidth = 700
+    local panelHeight = 520
+
+    love.graphics.setColor(Config.colors.panel)
+    love.graphics.rectangle("fill", panelX, panelY, panelWidth, panelHeight)
+
+    -- Border
+    love.graphics.setColor(Config.colors.green)
+    love.graphics.rectangle("line", panelX, panelY, panelWidth, panelHeight)
+
+    -- Title
+    love.graphics.setFont(UI.fonts.title)
+    love.graphics.setColor(Config.colors.green)
+    love.graphics.printf("TRANSMISSION LOG", panelX, panelY + 10, panelWidth, "center")
+
+    -- Instructions
+    love.graphics.setFont(UI.fonts.small)
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.printf("Press J or TAB to close | ESC to close", panelX, panelY + 40, panelWidth, "center")
+
+    -- Separator line
+    love.graphics.setColor(Config.colors.greenDim)
+    love.graphics.line(panelX + 20, panelY + 65, panelX + panelWidth - 20, panelY + 65)
+
+    -- List decoded messages
+    local yOffset = panelY + 80
+    local entryHeight = 85
+    local decodedCount = 0
+
+    for i, msg in ipairs(Game.messages) do
+        if msg.decoded then
+            decodedCount = decodedCount + 1
+
+            -- Entry background
+            love.graphics.setColor(Config.colors.background)
+            love.graphics.rectangle("fill", panelX + 20, yOffset, panelWidth - 40, entryHeight)
+
+            -- Entry border
+            love.graphics.setColor(Config.colors.greenDim)
+            love.graphics.rectangle("line", panelX + 20, yOffset, panelWidth - 40, entryHeight)
+
+            -- Frequency
+            love.graphics.setFont(UI.fonts.message)
+            love.graphics.setColor(Config.colors.yellow)
+            love.graphics.printf(
+                string.format("%.1f MHz", msg.frequency),
+                panelX + 30, yOffset + 5, 150, "left"
+            )
+
+            -- Morse code
+            love.graphics.setFont(UI.fonts.small)
+            love.graphics.setColor(Config.colors.green)
+            love.graphics.printf(
+                "MORSE: " .. (msg.morse or "N/A"),
+                panelX + 200, yOffset + 8, panelWidth - 220, "left"
+            )
+
+            -- Message text
+            love.graphics.setFont(UI.fonts.small)
+            love.graphics.setColor(Config.colors.white)
+            love.graphics.printf(
+                msg.text,
+                panelX + 30, yOffset + 28, panelWidth - 60, "left"
+            )
+
+            yOffset = yOffset + entryHeight + 10
+
+            -- Stop if we run out of space
+            if yOffset > panelY + panelHeight - 50 then
+                break
+            end
+        end
+    end
+
+    -- Show message if no decoded messages yet
+    if decodedCount == 0 then
+        love.graphics.setFont(UI.fonts.message)
+        love.graphics.setColor(Config.colors.greenDim)
+        love.graphics.printf(
+            "No transmissions decoded yet.\n\nTune the radio and lock onto signals\nto decode messages.",
+            panelX, panelY + 200, panelWidth, "center"
+        )
+    end
 end
 
 return UI
